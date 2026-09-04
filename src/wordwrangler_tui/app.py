@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import time
+import webbrowser
 from datetime import date
 
 from textual import events
@@ -30,6 +31,7 @@ from .api import (
 )
 
 GRID_SIZE = 5
+WORDWRANGLER_URL = "https://wordwrangler.us/"
 
 
 class Cell(Static):
@@ -131,15 +133,14 @@ class AboutScreen(ModalScreen):
         Binding("f", "open_feedback", "Feedback"),
     ]
 
-    ABOUT_TEXT = """\
-[b]WordWrangler[/b] — a daily word-square puzzle by Max Wheeler
-([u]wordwrangler.us[/u]). This is an unofficial terminal client.
-
-Swap letters within a row (never between rows) until every row
-AND every column spells a valid word. A cell turns light green
-when its row or column is valid, bold green when both are.
-
-[dim]f: send feedback to Max · esc/a: close[/dim]"""
+    ABOUT_TEXT = (
+        "[b]WordWrangler[/b] — a daily word-square puzzle by Max Wheeler "
+        "([@click=app.open_wordwrangler]wordwrangler.us[/]). This is an unofficial terminal client.\n\n"
+        "Swap letters within a row (never between rows) until every row AND every column "
+        "spells a valid word. A cell turns light green when its row or column is valid, "
+        "bold green when both are.\n\n"
+        "[dim]f: send feedback to Max · esc/a: close[/dim]"
+    )
 
     def compose(self) -> ComposeResult:
         with Vertical(id="about-box"):
@@ -251,6 +252,11 @@ class WordWranglerApp(App):
         text-style: bold;
         padding: 1 0 0 0;
     }
+    #subtitle {
+        width: 100%;
+        content-align: center middle;
+        color: $text-muted;
+    }
     #board {
         layout: grid;
         grid-size: 5 5;
@@ -340,6 +346,10 @@ class WordWranglerApp(App):
 
     def compose(self) -> ComposeResult:
         yield Static(self.format_title(), id="title")
+        yield Static(
+            "unofficial client for [@click=app.open_wordwrangler]wordwrangler.us[/]",
+            id="subtitle",
+        )
         yield Container(id="board")
         yield Static("", id="status")
         yield Footer()
@@ -549,6 +559,9 @@ class WordWranglerApp(App):
 
     def action_show_about(self) -> None:
         self.push_screen(AboutScreen())
+
+    def action_open_wordwrangler(self) -> None:
+        webbrowser.open(WORDWRANGLER_URL)
 
     def action_reset_all(self) -> None:
         if self.paused:
