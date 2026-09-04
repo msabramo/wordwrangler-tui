@@ -99,36 +99,55 @@ complete when every row and column is green.
 
 ## Screenshots
 
-![Fresh puzzle loaded](docs/screenshots/Screenshot%202026-09-04%20at%2012.45.56%E2%80%AFPM.png)
+(Screenshots use `wordwrangler --date 2026-04-27` — WordWrangler's very first
+puzzle — so nothing here spoils a current one.)
 
-A fresh puzzle (#10102) loaded straight from wordwrangler.us's live daily
-puzzle, cursor on the first cell, nothing solved yet.
+![Initial state](docs/screenshots/Screenshot%202026-09-04%20at%202.27.19%E2%80%AFPM.png)
 
-![Pick-up/swap mode](docs/screenshots/Screenshot%202026-09-04%20at%2012.46.07%E2%80%AFPM.png)
+Initial state after `wordwrangler --date 2026-04-27`: puzzle #9, cursor on
+the first cell, nothing solved yet.
+
+![Swap mode](docs/screenshots/Screenshot%202026-09-04%20at%202.28.07%E2%80%AFPM.png)
 
 Swap mode: Enter (or a click) picks up a letter — the filled tile — then
 moving to another cell in the same row and pressing Enter again swaps them.
 
-![Typing a whole row](docs/screenshots/Screenshot%202026-09-04%20at%2012.46.21%E2%80%AFPM.png)
+![Fast typing mode](docs/screenshots/Screenshot%202026-09-04%20at%202.28.58%E2%80%AFPM.png)
 
 Fast typing mode (`i`): type all 5 letters of a row at once instead of
-swapping tile-by-tile. Here `WRE__` is mid-entry, with placeholders for the
+swapping tile-by-tile. Here `RAN__` is mid-entry, with placeholders for the
 letters not yet typed.
 
-![Partial progress with live validation](docs/screenshots/Screenshot%202026-09-04%20at%2012.46.41%E2%80%AFPM.png)
+![Live validation](docs/screenshots/Screenshot%202026-09-04%20at%202.32.17%E2%80%AFPM.png)
 
-Live validation as you go: row 1 (STREW) is fully solved — row and column
-both valid, shown in reversed green — while row 2 is mid-solve. Individual
-cells turn green the instant their row or column becomes a real word.
+Live validation as you go: rows 1–3 (TWIST / RANCH / UTTER) are already
+valid words, and column 2 happens to spell WATER, so those intersecting
+cells get the deeper "both valid" highlight. Rows 4–5 are still scrambled.
 
-![All rows solved but not yet aligned](docs/screenshots/Screenshot%202026-09-04%20at%2012.47.15%E2%80%AFPM.png)
+![Close, but not solved](docs/screenshots/Screenshot%202026-09-04%20at%202.33.57%E2%80%AFPM.png)
 
-Close, but not solved: every row already spells a valid word, but rows 3–5
-aren't aligned with their columns yet (row 3 here is "ANGER," a valid word
-that happens to be the wrong permutation for the columns to work — it needs
-to be "RANGE" instead).
+Close, but not solved: four of five rows are solved (TWIST / RANCH / UTTER /
+SCENE). The last row's letters are all present but in the wrong order —
+"TRHWE" isn't a word; it needs to read THREW.
 
-![Puzzle solved](docs/screenshots/Screenshot%202026-09-04%20at%2012.47.22%E2%80%AFPM.png)
+![Solved](docs/screenshots/Screenshot%202026-09-04%20at%202.34.34%E2%80%AFPM.png)
 
-Solved! Every row and column is a real word — STREW / CRUDE / RANGE / ACTED
-/ MESSY — and the status bar celebrates with the elapsed solve time.
+Solved! Every row and column is a real word — TWIST / RANCH / UTTER / SCENE
+/ THREW — and the status bar celebrates with the elapsed solve time.
+
+![Keybindings help screen](docs/screenshots/Screenshot%202026-09-04%20at%202.34.55%E2%80%AFPM.png)
+
+The full keybindings help screen (`?`), including bindings that aren't
+shown in the bottom legend, like the typing-mode-only Enter/Backspace/Esc.
+
+![About screen](docs/screenshots/Screenshot%202026-09-04%20at%202.35.16%E2%80%AFPM.png)
+
+The About screen (`a`) — an unofficial equivalent of the website's ⓘ
+button — with a clickable link to wordwrangler.us and a compact
+how-to-play summary.
+
+![Feedback screen](docs/screenshots/Screenshot%202026-09-04%20at%202.36.40%E2%80%AFPM.png)
+
+The feedback screen (`f` from About). Sending this performs a real write to
+WordWrangler's public `feedback` Firestore collection, reaching Max Wheeler
+directly — same as using the official site's own feedback form.
