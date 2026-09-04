@@ -37,6 +37,10 @@ wordwrangler --id 10102
 
 (Or, without the installed command: `uv run wordwrangler`.)
 
+`--date` accepts anything from **2026-04-27** (WordWrangler's launch date,
+found by binary-searching the Firestore endpoint) through today. Pass a date
+outside that range and it tells you so instead of a raw HTTP error.
+
 ## Controls
 
 Click a letter, then click another letter in the same row to swap them —
