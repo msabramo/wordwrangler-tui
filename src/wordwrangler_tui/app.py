@@ -18,7 +18,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Button, Footer, Input, Static, TextArea
+from textual.widgets import Button, Input, Static, TextArea
 
 from .api import (
     Puzzle,
@@ -299,7 +299,25 @@ class WordWranglerApp(App):
         content-align: center middle;
         padding: 1;
     }
+    #legend {
+        dock: bottom;
+        width: 100%;
+        height: auto;
+        content-align: center middle;
+        color: $footer-foreground;
+        background: $footer-background;
+        padding: 0 1;
+    }
     """
+
+    # A plain wrapping line instead of Textual's built-in Footer: Footer is a
+    # single-line horizontal *scrollable* bar, not a flow layout — it can't
+    # wrap, so a narrow terminal would just hide/scroll bindings instead of
+    # reflowing them. This wraps onto as many lines as the width needs.
+    LEGEND_TEXT = (
+        "↑↓←→/hjkl move · ⏎/space swap · i type row · r reset row · "
+        "shift+r reset all · p pause · a about · ? help · q quit"
+    )
 
     BINDINGS = [
         Binding("up", "move_cursor('up')", "Up"),
@@ -352,7 +370,7 @@ class WordWranglerApp(App):
         )
         yield Container(id="board")
         yield Static("", id="status")
-        yield Footer()
+        yield Static(self.LEGEND_TEXT, id="legend")
 
     def on_mount(self) -> None:
         board = self.query_one("#board", Container)
