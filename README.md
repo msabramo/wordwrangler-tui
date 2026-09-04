@@ -64,8 +64,26 @@ all 5 letters of the row at once instead of swapping tile-by-tile.
 | `i` | Type the whole row at once (fast path once you know the anagram) |
 | `r` | Reset the current row to its original scramble |
 | Shift+`r` | Reset the whole puzzle |
+| `p` | Pause/resume — hides the board and freezes the timer |
 | `?` | Show/hide the full keybindings help screen |
+| `a` | About WordWrangler (then `f` to send feedback to Max) |
 | `q` | Quit |
+
+### Pause/resume
+
+`p` replicates the official web version's pause feature: it hides every
+letter (and any row/column coloring, so it can't leak solve progress),
+freezes the timer, and blocks all board actions. Pressing `p` again reveals
+the board and resumes the timer from exactly where it left off — the paused
+time itself doesn't count toward your solve time.
+
+### About & feedback
+
+`a` opens a compact about/how-to-play panel (an unofficial equivalent of the
+website's ⓘ button). From there, `f` opens a feedback form; sending it
+performs a real write to WordWrangler's public `feedback` Firestore
+collection — the same one the official site's own form uses — so it reaches
+Max Wheeler, the game's creator, directly.
 
 ### Typing a whole row
 

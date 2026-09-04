@@ -8,17 +8,26 @@ column spells a real word.
 from __future__ import annotations
 
 import argparse
+import asyncio
 import time
 from datetime import date
 
 from textual import events
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Container
+from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Footer, Static
+from textual.widgets import Button, Footer, Input, Static, TextArea
 
-from .api import Puzzle, PuzzleFetchError, fetch_puzzle, fetch_puzzle_for_date, fetch_today_puzzle, load_wordlist
+from .api import (
+    Puzzle,
+    PuzzleFetchError,
+    fetch_puzzle,
+    fetch_puzzle_for_date,
+    fetch_today_puzzle,
+    load_wordlist,
+    submit_feedback,
+)
 
 GRID_SIZE = 5
 
@@ -79,7 +88,9 @@ class HelpScreen(ModalScreen):
 [b]Other[/b]
   r                       Reset current row
   shift+r                 Reset whole puzzle
+  p                       Pause / resume (hides the board, freezes the timer)
   ?                       Toggle this help
+  a                       About WordWrangler (then 'f' for feedback to Max)
   q                       Quit
 
 [dim]press any of the keys above to close[/dim]"""
@@ -89,6 +100,144 @@ class HelpScreen(ModalScreen):
 
     def action_close(self) -> None:
         self.app.pop_screen()
+
+
+class AboutScreen(ModalScreen):
+    """Replicates the web version's (i) info panel: a compact how-to-play blurb.
+
+    Deliberately kept to a handful of lines — about the same footprint as
+    the game grid itself — so it fits comfortably without needing a huge
+    terminal or tiny font. The feedback form lives in a separate screen
+    (FeedbackScreen), opened from here with 'f'.
+    """
+
+    CSS = """
+    AboutScreen {
+        align: center middle;
+    }
+    #about-box {
+        width: 60;
+        height: auto;
+        border: round $accent;
+        background: $surface;
+        padding: 1 2;
+    }
+    """
+
+    BINDINGS = [
+        Binding("escape", "close", "Close"),
+        Binding("a", "close", "Close"),
+        Binding("q", "close", "Close"),
+        Binding("f", "open_feedback", "Feedback"),
+    ]
+
+    ABOUT_TEXT = """\
+[b]WordWrangler[/b] — a daily word-square puzzle by Max Wheeler
+([u]wordwrangler.us[/u]). This is an unofficial terminal client.
+
+Swap letters within a row (never between rows) until every row
+AND every column spells a valid word. A cell turns light green
+when its row or column is valid, bold green when both are.
+
+[dim]f: send feedback to Max · esc/a: close[/dim]"""
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="about-box"):
+            yield Static(self.ABOUT_TEXT)
+
+    def action_close(self) -> None:
+        self.app.pop_screen()
+
+    def action_open_feedback(self) -> None:
+        self.app.push_screen(FeedbackScreen())
+
+
+class FeedbackScreen(ModalScreen):
+    """Feedback form — writes a real doc to WordWrangler's public `feedback`
+    Firestore collection, the same one the official site's own form uses.
+    Reaches Max Wheeler, the game's creator, not us.
+    """
+
+    CSS = """
+    FeedbackScreen {
+        align: center middle;
+    }
+    #feedback-box {
+        width: 60;
+        height: auto;
+        border: round $accent;
+        background: $surface;
+        padding: 1 2;
+    }
+    #feedback-box TextArea {
+        height: 5;
+        margin-top: 1;
+        border: round $surface;
+    }
+    #feedback-box Input {
+        margin-top: 1;
+    }
+    #feedback-status {
+        margin-top: 1;
+        height: 1;
+    }
+    #feedback-buttons {
+        margin-top: 1;
+        height: auto;
+        align: left middle;
+    }
+    #feedback-buttons Button {
+        margin-right: 2;
+    }
+    """
+
+    BINDINGS = [
+        Binding("escape", "close", "Close"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="feedback-box"):
+            yield Static("[b]Send feedback to Max[/b]")
+            yield TextArea(id="feedback-text")
+            yield Input(placeholder="Email (optional)", id="feedback-email")
+            yield Static("", id="feedback-status")
+            with Horizontal(id="feedback-buttons"):
+                yield Button("Send", id="send-feedback", variant="primary")
+                yield Button("Cancel", id="cancel-feedback")
+
+    def action_close(self) -> None:
+        self.app.pop_screen()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "cancel-feedback":
+            self.app.pop_screen()
+        elif event.button.id == "send-feedback":
+            self.send_feedback()
+
+    def send_feedback(self) -> None:
+        text = self.query_one("#feedback-text", TextArea).text.strip()
+        status = self.query_one("#feedback-status", Static)
+        if not text:
+            status.update("[$warning]Type something first.[/]")
+            return
+        email = self.query_one("#feedback-email", Input).value
+        self.query_one("#send-feedback", Button).disabled = True
+        status.update("Sending…")
+        self.run_worker(self._do_submit(text, email), exclusive=True)
+
+    async def _do_submit(self, text: str, email: str) -> None:
+        status = self.query_one("#feedback-status", Static)
+        send_button = self.query_one("#send-feedback", Button)
+        try:
+            await asyncio.to_thread(submit_feedback, text, email or None)
+        except Exception as exc:
+            status.update(f"[red]Failed to send: {exc}[/red]")
+            send_button.disabled = False
+        else:
+            status.update("Thanks — sent to Max!")
+            self.query_one("#feedback-text", TextArea).text = ""
+            self.query_one("#feedback-email", Input).value = ""
+            send_button.disabled = False
 
 
 class WordWranglerApp(App):
@@ -128,6 +277,10 @@ class WordWranglerApp(App):
         background: $accent 30%;
         border: round $accent;
     }
+    Cell.paused {
+        color: $text-muted;
+        border: round $surface;
+    }
     Cell.row-valid, Cell.col-valid {
         color: $success;
     }
@@ -155,7 +308,9 @@ class WordWranglerApp(App):
         Binding("i", "start_typing", "Type row"),
         Binding("r", "reset_row", "Reset row"),
         Binding("shift+r", "reset_all", "Reset all"),
+        Binding("p", "toggle_pause", "Pause"),
         Binding("question_mark", "toggle_help", "Help"),
+        Binding("a", "show_about", "About"),
         Binding("q", "quit", "Quit"),
     ]
 
@@ -173,6 +328,8 @@ class WordWranglerApp(App):
         self.typing_row: int | None = None
         self.type_buffer = ""
         self.error_message: str | None = None
+        self.paused = False
+        self.paused_at: float | None = None
 
     def format_title(self) -> str:
         title = f"WordWrangler #{self.puzzle.puzzle_id}"
@@ -196,7 +353,7 @@ class WordWranglerApp(App):
         self.set_interval(1, self.tick)
 
     def tick(self) -> None:
-        if self.start_time is not None and not self.solved:
+        if self.start_time is not None and not self.solved and not self.paused:
             self.elapsed = time.monotonic() - self.start_time
             self.update_status()
 
@@ -218,6 +375,14 @@ class WordWranglerApp(App):
         for r in range(GRID_SIZE):
             for c in range(GRID_SIZE):
                 cell = self.query_one(f"#cell-{r}-{c}", Cell)
+                if self.paused:
+                    # Hide letters (and any row/col validity coloring, which
+                    # would otherwise leak solve progress) while paused —
+                    # matches the web version flipping tiles to their blank
+                    # backs.
+                    cell.update("▒")
+                    cell.set_classes("paused")
+                    continue
                 if self.typing_row == r:
                     letter = self.type_buffer[c].upper() if c < len(self.type_buffer) else "_"
                 else:
@@ -242,6 +407,10 @@ class WordWranglerApp(App):
 
     def update_status(self) -> None:
         status = self.query_one("#status", Static)
+        if self.paused:
+            mins, secs = divmod(int(self.elapsed), 60)
+            status.update(f"{mins:02d}:{secs:02d} — PAUSED ⏸   (press p to resume · ? for help)")
+            return
         if self.typing_row is not None:
             buf = self.type_buffer.upper().ljust(GRID_SIZE, "_")
             line = f"Typing row {self.typing_row + 1}: {buf}   (enter: commit · backspace: delete · esc: cancel)"
@@ -254,6 +423,8 @@ class WordWranglerApp(App):
         status.update(f"{mins:02d}:{secs:02d} — {state}   (press ? for help)")
 
     def action_move_cursor(self, direction: str) -> None:
+        if self.paused:
+            return
         r, c = self.cursor
         if direction == "up":
             r = (r - 1) % GRID_SIZE
@@ -270,7 +441,7 @@ class WordWranglerApp(App):
         self.handle_cell_activate(*self.cursor)
 
     def handle_cell_activate(self, r: int, c: int) -> None:
-        if self.solved or self.typing_row is not None:
+        if self.solved or self.paused or self.typing_row is not None:
             return
         self.cursor = (r, c)
         if self.start_time is None:
@@ -289,7 +460,7 @@ class WordWranglerApp(App):
         self.refresh_board()
 
     def action_start_typing(self) -> None:
-        if self.solved:
+        if self.solved or self.paused:
             return
         r, _ = self.cursor
         self.typing_row = r
@@ -346,15 +517,42 @@ class WordWranglerApp(App):
         self.refresh_board()
 
     def action_reset_row(self) -> None:
+        if self.paused:
+            return
         r, _ = self.cursor
         self.grid[r] = list(self.original_rows[r])
         self.selected = None
         self.refresh_board()
 
+    def action_toggle_pause(self) -> None:
+        if self.solved or self.start_time is None:
+            return  # nothing to pause before the puzzle has started
+        if self.paused:
+            # Resume: shift start_time forward by however long we were
+            # paused, so elapsed time picks up exactly where it left off —
+            # mirrors the web version's startedAt/pausedAt reconciliation.
+            now = time.monotonic()
+            self.start_time += now - self.paused_at
+            self.paused = False
+            self.paused_at = None
+        else:
+            self.paused = True
+            self.paused_at = time.monotonic()
+            self.selected = None
+            self.typing_row = None
+            self.type_buffer = ""
+            self.error_message = None
+        self.refresh_board()
+
     def action_toggle_help(self) -> None:
         self.push_screen(HelpScreen())
 
+    def action_show_about(self) -> None:
+        self.push_screen(AboutScreen())
+
     def action_reset_all(self) -> None:
+        if self.paused:
+            return
         self.grid = [list(r) for r in self.original_rows]
         self.selected = None
         self.start_time = None

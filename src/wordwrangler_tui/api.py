@@ -12,7 +12,7 @@ import json
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 FIRESTORE_BASE = (
@@ -133,6 +133,47 @@ def fetch_today_puzzle() -> Puzzle:
 def fetch_puzzle_for_date(day: str) -> Puzzle:
     puzzle_id = fetch_puzzle_id_for_date(day)
     return fetch_puzzle(puzzle_id, day=day)
+
+
+FEEDBACK_MAX_TEXT = 2000
+FEEDBACK_MAX_EMAIL = 200
+
+
+def submit_feedback(text: str, email: str | None = None) -> None:
+    """Write a feedback doc to WordWrangler's public `feedback` collection.
+
+    This replays the exact write the official site's own feedback form
+    performs (same collection, same field names) — it is a real submission
+    to Max Wheeler's live inbox, not a sandbox/test endpoint. Only call this
+    when a user has actually chosen to send feedback.
+    """
+    text = text.strip()[:FEEDBACK_MAX_TEXT]
+    if not text:
+        raise ValueError("Feedback text is empty.")
+
+    fields: dict = {
+        "text": {"stringValue": text},
+        "createdAt": {"timestampValue": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"},
+        "userAgent": {"stringValue": USER_AGENT},
+    }
+    email = (email or "").strip()[:FEEDBACK_MAX_EMAIL]
+    if email:
+        fields["email"] = {"stringValue": email}
+
+    url = f"{FIRESTORE_BASE}/feedback?key={API_KEY}"
+    req = urllib.request.Request(
+        url,
+        data=json.dumps({"fields": fields}).encode(),
+        headers={"User-Agent": USER_AGENT, "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            resp.read()
+    except urllib.error.HTTPError as exc:
+        raise PuzzleFetchError(f"Feedback submission failed: HTTP {exc.code} {exc.reason}") from exc
+    except (urllib.error.URLError, TimeoutError) as exc:
+        raise PuzzleFetchError(f"Feedback submission failed: {exc}") from exc
 
 
 def load_wordlist() -> set[str]:
