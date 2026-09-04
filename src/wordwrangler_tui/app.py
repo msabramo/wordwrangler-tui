@@ -14,6 +14,7 @@ from textual import events
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container
+from textual.screen import ModalScreen
 from textual.widgets import Footer, Static
 
 from .api import Puzzle, PuzzleFetchError, fetch_puzzle, fetch_puzzle_for_date, fetch_today_puzzle, load_wordlist
@@ -31,6 +32,62 @@ class Cell(Static):
 
     def on_click(self) -> None:
         self.app.handle_cell_activate(self.row, self.col)
+
+
+class HelpScreen(ModalScreen):
+    """A dismissible overlay listing every keybinding."""
+
+    CSS = """
+    HelpScreen {
+        align: center middle;
+    }
+    #help-box {
+        width: auto;
+        height: auto;
+        border: round $accent;
+        background: $surface;
+        padding: 1 3;
+    }
+    """
+
+    BINDINGS = [
+        Binding("escape", "close", "Close"),
+        Binding("question_mark", "close", "Close"),
+        Binding("q", "close", "Close"),
+        Binding("enter", "close", "Close"),
+        Binding("space", "close", "Close"),
+    ]
+
+    HELP_TEXT = """\
+[b]WordWrangler — Keybindings[/b]
+
+[b]Move[/b]
+  Arrow keys / h j k l    Move cursor
+  Click                   Select a cell
+
+[b]Swap[/b]
+  Enter / Space / click   Pick up a letter, then pick another
+                          cell in the same row to swap
+
+[b]Type a whole row[/b]
+  i                       Start typing the row under the cursor
+  (while typing) Enter    Commit early
+  (while typing) Backspace  Delete last letter
+  (while typing) Escape   Cancel
+
+[b]Other[/b]
+  r                       Reset current row
+  shift+r                 Reset whole puzzle
+  ?                       Toggle this help
+  q                       Quit
+
+[dim]press any of the keys above to close[/dim]"""
+
+    def compose(self) -> ComposeResult:
+        yield Static(self.HELP_TEXT, id="help-box")
+
+    def action_close(self) -> None:
+        self.app.pop_screen()
 
 
 class WordWranglerApp(App):
@@ -97,6 +154,7 @@ class WordWranglerApp(App):
         Binding("i", "start_typing", "Type row"),
         Binding("r", "reset_row", "Reset row"),
         Binding("shift+r", "reset_all", "Reset all"),
+        Binding("question_mark", "toggle_help", "Help"),
         Binding("q", "quit", "Quit"),
     ]
 
@@ -185,10 +243,7 @@ class WordWranglerApp(App):
             return
         mins, secs = divmod(int(self.elapsed), 60)
         state = "SOLVED! \U0001f389" if self.solved else "in progress"
-        status.update(
-            f"{mins:02d}:{secs:02d} — {state}   "
-            "(arrows/hjkl: move · enter: pick up/swap · i: type row · r: reset row · shift+r: reset all · q: quit)"
-        )
+        status.update(f"{mins:02d}:{secs:02d} — {state}   (press ? for help)")
 
     def action_move_cursor(self, direction: str) -> None:
         r, c = self.cursor
@@ -287,6 +342,9 @@ class WordWranglerApp(App):
         self.grid[r] = list(self.original_rows[r])
         self.selected = None
         self.refresh_board()
+
+    def action_toggle_help(self) -> None:
+        self.push_screen(HelpScreen())
 
     def action_reset_all(self) -> None:
         self.grid = [list(r) for r in self.original_rows]

@@ -60,6 +60,7 @@ all 5 letters of the row at once instead of swapping tile-by-tile.
 | `i` | Type the whole row at once (fast path once you know the anagram) |
 | `r` | Reset the current row to its original scramble |
 | Shift+`r` | Reset the whole puzzle |
+| `?` | Show/hide the full keybindings help screen |
 | `q` | Quit |
 
 ### Typing a whole row
