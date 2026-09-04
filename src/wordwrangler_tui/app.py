@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import time
+from datetime import date
 
 from textual import events
 from textual.app import App, ComposeResult
@@ -173,8 +174,15 @@ class WordWranglerApp(App):
         self.type_buffer = ""
         self.error_message: str | None = None
 
+    def format_title(self) -> str:
+        title = f"WordWrangler #{self.puzzle.puzzle_id}"
+        if self.puzzle.date:
+            d = date.fromisoformat(self.puzzle.date)
+            title += f" — {d:%A, %B} {d.day}, {d:%Y}"
+        return title
+
     def compose(self) -> ComposeResult:
-        yield Static(f"WordWrangler #{self.puzzle.puzzle_id}", id="title")
+        yield Static(self.format_title(), id="title")
         yield Container(id="board")
         yield Static("", id="status")
         yield Footer()

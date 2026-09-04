@@ -40,6 +40,7 @@ class PuzzleFetchError(RuntimeError):
 class Puzzle:
     puzzle_id: int
     rows: list[str]  # 5 scrambled 5-letter strings, one per grid row
+    date: str | None = None  # ISO date, when known
 
 
 def _get_json(path: str) -> dict | None:
@@ -72,25 +73,66 @@ def fetch_puzzle_id_for_date(day: str) -> int:
     return int(fields["puzzleId"]["integerValue"])
 
 
-def fetch_puzzle(puzzle_id: int) -> Puzzle:
+def fetch_date_for_puzzle_id(puzzle_id: int) -> str | None:
+    """Reverse-lookup which date a puzzle id was assigned to, via a Firestore query.
+
+    Used when a puzzle is requested by --id rather than by date, so the title
+    can still show a date. Not all puzzle ids have one (a handful of ids
+    before WordWrangler's public launch predate any dailyPuzzle assignment).
+    """
+    url = f"{FIRESTORE_BASE}:runQuery?key={API_KEY}"
+    query = {
+        "structuredQuery": {
+            "from": [{"collectionId": "dailyPuzzle"}],
+            "where": {
+                "fieldFilter": {
+                    "field": {"fieldPath": "puzzleId"},
+                    "op": "EQUAL",
+                    "value": {"integerValue": str(puzzle_id)},
+                }
+            },
+            "limit": 1,
+        }
+    }
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(query).encode(),
+        headers={"User-Agent": USER_AGENT, "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            results = json.loads(resp.read())
+    except (urllib.error.URLError, TimeoutError):
+        return None
+    for result in results:
+        doc = result.get("document")
+        if doc:
+            return doc["name"].rsplit("/", 1)[-1]
+    return None
+
+
+def fetch_puzzle(puzzle_id: int, day: str | None = None) -> Puzzle:
     doc = _get_json(f"puzzles/{puzzle_id}")
     fields = doc.get("fields") if doc else None
     if not fields:
         raise PuzzleFetchError(f"No puzzle found with id {puzzle_id}.")
     values = fields["scrambled"]["arrayValue"]["values"]
     rows = [v["stringValue"] for v in values]
-    return Puzzle(puzzle_id=puzzle_id, rows=rows)
+    if day is None:
+        day = fetch_date_for_puzzle_id(puzzle_id)
+    return Puzzle(puzzle_id=puzzle_id, rows=rows, date=day)
 
 
 def fetch_today_puzzle() -> Puzzle:
     today = date.today().isoformat()
     puzzle_id = fetch_puzzle_id_for_date(today)
-    return fetch_puzzle(puzzle_id)
+    return fetch_puzzle(puzzle_id, day=today)
 
 
 def fetch_puzzle_for_date(day: str) -> Puzzle:
     puzzle_id = fetch_puzzle_id_for_date(day)
-    return fetch_puzzle(puzzle_id)
+    return fetch_puzzle(puzzle_id, day=day)
 
 
 def load_wordlist() -> set[str]:
