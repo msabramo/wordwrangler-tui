@@ -3,6 +3,8 @@
 A k9s-style terminal UI for playing [wordwrangler.us](https://wordwrangler.us)'s
 daily word-square puzzle without a browser.
 
+![Solved](docs/screenshots/Screenshot%202026-09-04%20at%202.34.34%E2%80%AFPM.png)
+
 Each row starts with its 5 letters scrambled. Reorder the letters *within* a
 row (letters never move between rows) until every row and every column spells
 a real word.
@@ -26,6 +28,17 @@ For local development instead (no global command):
 ```sh
 uv sync
 ```
+
+### Docker
+
+No Python setup needed — just Docker:
+
+```sh
+docker build -t wordwrangler-tui .
+docker run -it --rm wordwrangler-tui
+```
+
+Pass the same flags as the CLI, e.g. `docker run -it --rm wordwrangler-tui --date 2026-09-01`.
 
 ## Play
 
