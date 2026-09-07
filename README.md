@@ -34,11 +34,17 @@ uv sync
 No Python setup needed — just Docker:
 
 ```sh
+docker run -it --rm ghcr.io/msabramo/wordwrangler-tui
+```
+
+Or build it yourself:
+
+```sh
 docker build -t wordwrangler-tui .
 docker run -it --rm wordwrangler-tui
 ```
 
-Pass the same flags as the CLI, e.g. `docker run -it --rm wordwrangler-tui --date 2026-09-01`.
+Pass the same flags as the CLI, e.g. `docker run -it --rm ghcr.io/msabramo/wordwrangler-tui --date 2026-09-01`.
 
 ## Play
 
