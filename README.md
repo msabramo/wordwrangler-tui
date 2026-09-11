@@ -3,6 +3,8 @@
 A k9s-style terminal UI for playing [wordwrangler.us](https://wordwrangler.us)'s
 daily word-square puzzle without a browser.
 
+[☕ Buy me a coffee](https://buymeacoffee.com/msabramo) if you enjoy this.
+
 ![Solved](docs/screenshots/Screenshot%202026-09-04%20at%202.34.34%E2%80%AFPM.png)
 
 Each row starts with its 5 letters scrambled. Reorder the letters *within* a
